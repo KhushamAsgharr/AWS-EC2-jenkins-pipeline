@@ -1,0 +1,98 @@
+pipeline {
+    agent any
+
+    environment {
+        // Use Jenkins credentials to securely fetch AWS access keys
+        AWS_ACCESS_KEY_ID = credentials('aws-access-key')
+        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-key')
+        AWS_REGION = 'us-east-1'  // Replace with your preferred region
+    }
+
+    stages {
+        stage('Check EC2 Instance Status') {
+            steps {
+                script {
+                    echo "Checking the status of EC2 instances..."
+
+                    // Run the AWS CLI command to describe EC2 instances
+                    def describeInstances = sh(script: '''
+                        aws ec2 describe-instances \
+                            --region ${AWS_REGION} \
+                            --query 'Reservations[*].Instances[*].[InstanceId,State.Name]' \
+                            --output table
+                        ''', returnStdout: true).trim()
+
+                    echo "EC2 Instances status:\n${describeInstances}"
+                }
+            }
+        }
+
+        stage('Start EC2 Instance') {
+            steps {
+                script {
+                    echo "Starting EC2 instance..."
+
+                    // Run the AWS CLI command to start a specific EC2 instance
+                    def instanceId = 'i-xxxxxxxxxxxxxxxxx' // Replace with your EC2 instance ID
+                    def startInstance = sh(script: '''
+                        aws ec2 start-instances \
+                            --instance-ids ${instanceId} \
+                            --region ${AWS_REGION}
+                        ''', returnStdout: true).trim()
+
+                    echo "Started EC2 instance: ${startInstance}"
+                }
+            }
+        }
+
+        stage('Stop EC2 Instance') {
+            steps {
+                script {
+                    echo "Stopping EC2 instance..."
+
+                    // Run the AWS CLI command to stop a specific EC2 instance
+                    def instanceId = 'i-xxxxxxxxxxxxxxxxx' // Replace with your EC2 instance ID
+                    def stopInstance = sh(script: '''
+                        aws ec2 stop-instances \
+                            --instance-ids ${instanceId} \
+                            --region ${AWS_REGION}
+                        ''', returnStdout: true).trim()
+
+                    echo "Stopped EC2 instance: ${stopInstance}"
+                }
+            }
+        }
+
+        stage('Terminate EC2 Instance') {
+            steps {
+                script {
+                    echo "Terminating EC2 instance..."
+
+                    // Run the AWS CLI command to terminate a specific EC2 instance
+                    def instanceId = 'i-xxxxxxxxxxxxxxxxx' // Replace with your EC2 instance ID
+                    def terminateInstance = sh(script: '''
+                        aws ec2 terminate-instances \
+                            --instance-ids ${instanceId} \
+                            --region ${AWS_REGION}
+                        ''', returnStdout: true).trim()
+
+                    echo "Terminated EC2 instance: ${terminateInstance}"
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            echo "Pipeline execution completed."
+        }
+
+        success {
+            echo "EC2 instance management operations completed successfully."
+        }
+
+        failure {
+            echo "There was an error during the EC2 instance management process."
+        }
+    }
+}
